@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import Accelerate
+import UIKit
 
 class AudioAnalyzer: ObservableObject {
     @Published var isRecording = false
@@ -206,31 +207,34 @@ class AudioAnalyzer: ObservableObject {
         // Применяем окно Ханна
         var windowedSamples = [Float](repeating: 0, count: fftBufferSize)
         vDSP_vmul(inputSamples, 1, window, 1, &windowedSamples, 1, vDSP_Length(fftBufferSize))
-        
-        // Подготавливаем данные для FFT
+
         var realParts = [Float](repeating: 0, count: fftBufferSize/2)
         var imagParts = [Float](repeating: 0, count: fftBufferSize/2)
-        
-        // Выполняем FFT
-        var splitComplex = DSPSplitComplex(realp: &realParts, imagp: &imagParts)
-        
-        // Преобразуем данные для FFT
-        let samplesPointer = windowedSamples.withUnsafeMutableBufferPointer { bufferPointer in
-            return bufferPointer.baseAddress!
-        }
-        
-        vDSP_ctoz(UnsafePointer<DSPComplex>(OpaquePointer(samplesPointer)), 2, &splitComplex, 1, vDSP_Length(fftBufferSize/2))
-        
-        guard let fftSetup = fftSetup else { return }
-        vDSP_fft_zrip(fftSetup, &splitComplex, 1, vDSP_Length(log2(Double(fftBufferSize))), Int32(FFT_FORWARD))
-        
-        // Вычисляем магнитуды
-        var magnitudes = [Float](repeating: 0, count: fftBufferSize/2)
-        vDSP_zvmags(&splitComplex, 1, &magnitudes, 1, vDSP_Length(fftBufferSize/2))
-        
-        // Обновляем частотные данные
-        DispatchQueue.main.async {
-            self.updateFrequencyData(magnitudes: magnitudes)
+
+        realParts.withUnsafeMutableBufferPointer { realPtr in
+            imagParts.withUnsafeMutableBufferPointer { imagPtr in
+                guard let realBase = realPtr.baseAddress, let imagBase = imagPtr.baseAddress else { return }
+                var splitComplex = DSPSplitComplex(realp: realBase, imagp: imagBase)
+
+                windowedSamples.withUnsafeBufferPointer { samplesPtr in
+                    // Convert interleaved real input to split complex format
+                    samplesPtr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: fftBufferSize/2) { complexPtr in
+                        vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(fftBufferSize/2))
+                    }
+                }
+
+                guard let fftSetup = self.fftSetup else { return }
+                vDSP_fft_zrip(fftSetup, &splitComplex, 1, vDSP_Length(log2(Double(self.fftBufferSize))), Int32(FFT_FORWARD))
+
+                // Вычисляем магнитуды
+                var magnitudes = [Float](repeating: 0, count: self.fftBufferSize/2)
+                vDSP_zvmags(&splitComplex, 1, &magnitudes, 1, vDSP_Length(self.fftBufferSize/2))
+
+                // Обновляем частотные данные
+                DispatchQueue.main.async {
+                    self.updateFrequencyData(magnitudes: magnitudes)
+                }
+            }
         }
     }
     
@@ -323,9 +327,38 @@ class AudioAnalyzer: ObservableObject {
         let isEscalation = (displayedEngineStatus == .normal && (engineStatus == .warning || engineStatus == .critical)) ||
                            (displayedEngineStatus == .warning && engineStatus == .critical)
         if isEscalation || timeSince >= uiUpdateMinInterval {
+            let previousStatus = displayedEngineStatus
             displayedEngineStatus = engineStatus
             displayedStatusDescription = statusDescription
             lastUIDisplayUpdate = now
+            
+            // Haptic feedback при смене статуса
+            if previousStatus != engineStatus {
+                triggerHapticFeedback(for: engineStatus)
+            }
+        }
+    }
+    
+    private func triggerHapticFeedback(for status: EngineStatus) {
+        let generator: UIImpactFeedbackGenerator
+        
+        switch status {
+        case .normal:
+            generator = UIImpactFeedbackGenerator(style: .light)
+        case .warning:
+            generator = UIImpactFeedbackGenerator(style: .medium)
+        case .critical:
+            generator = UIImpactFeedbackGenerator(style: .heavy)
+        }
+        
+        generator.prepare()
+        generator.impactOccurred()
+        
+        // Дополнительная вибрация для критического статуса
+        if status == .critical {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                generator.impactOccurred(intensity: 0.8)
+            }
         }
     }
     

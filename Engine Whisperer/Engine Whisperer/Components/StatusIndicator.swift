@@ -8,12 +8,13 @@ struct StatusIndicator: View {
             ForEach(EngineStatus.allCases, id: \.self) { item in
                 VStack(spacing: 6) {
                     Circle()
-                        .fill(status == item ? item.color : Color.gray.opacity(0.2))
+                        .fill(status == item ? AnyShapeStyle(item.gradient) : AnyShapeStyle(Color.gray.opacity(0.2)))
                         .frame(width: 24, height: 24)
                         .overlay(
                             Circle()
                                 .stroke(status == item ? Color.ferrariDark : .clear, lineWidth: 2)
                         )
+                        .shadow(color: status == item ? item.color.opacity(0.4) : .clear, radius: 4, x: 0, y: 2)
                     
                     Text(item.title)
                         .font(.system(size: 10, weight: .bold))
@@ -32,7 +33,7 @@ struct StatusIndicator: View {
     }
 }
 
-enum EngineStatus: CaseIterable {
+enum EngineStatus: String, CaseIterable, Codable {
     case normal, warning, critical
     
     var color: Color {
@@ -40,6 +41,29 @@ enum EngineStatus: CaseIterable {
         case .normal: return .green
         case .warning: return .yellow
         case .critical: return .ferrariRed
+        }
+    }
+    
+    var gradient: LinearGradient {
+        switch self {
+        case .normal:
+            return LinearGradient(
+                colors: [Color.green, Color.green.opacity(0.7), Color.mint],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .warning:
+            return LinearGradient(
+                colors: [Color.yellow, Color.orange.opacity(0.8), Color.yellow.opacity(0.6)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .critical:
+            return LinearGradient(
+                colors: [Color.ferrariRed, Color.red.opacity(0.8), Color.ferrariRed.opacity(0.7)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
     

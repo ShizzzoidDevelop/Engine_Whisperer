@@ -2,13 +2,10 @@ import SwiftUI
 
 struct StatusTimeline: View {
     let statuses: [EngineStatus]
+    @Environment(\.colorScheme) var colorScheme
     
-    private func color(for status: EngineStatus) -> Color {
-        switch status {
-        case .normal: return .green
-        case .warning: return .yellow
-        case .critical: return .ferrariRed
-        }
+    private var surfaceColor: Color {
+        colorScheme == .dark ? Color.ferrariDarkSurface : Color.white
     }
     
     var body: some View {
@@ -21,7 +18,7 @@ struct StatusTimeline: View {
             HStack(alignment: .center, spacing: spacing) {
                 ForEach(0..<barCount, id: \.self) { idx in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(color(for: statuses[idx]))
+                        .fill(AnyShapeStyle(statuses[idx].gradient))
                         .frame(width: barWidth, height: geometry.size.height)
                 }
             }
@@ -29,8 +26,8 @@ struct StatusTimeline: View {
         .frame(height: 12)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color.white)
-                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+                .fill(surfaceColor)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 3, x: 0, y: 1)
         )
         .accessibilityIdentifier("StatusTimeline")
     }

@@ -33,6 +33,12 @@ struct Constants {
         static let ferrariRed = Color(red: 0.78, green: 0.06, blue: 0.11)
         static let ferrariIvory = Color(red: 1.0, green: 0.99, blue: 0.94)
         static let ferrariDark = Color(red: 0.15, green: 0.15, blue: 0.15)
+        
+        // Dark theme colors
+        static let ferrariDarkBackground = Color(red: 0.08, green: 0.08, blue: 0.1)
+        static let ferrariDarkSurface = Color(red: 0.12, green: 0.12, blue: 0.14)
+        static let ferrariDarkText = Color(red: 0.95, green: 0.95, blue: 0.97)
+        static let ferrariDarkRed = Color(red: 0.9, green: 0.2, blue: 0.25)
     }
     
     // MARK: - Messages

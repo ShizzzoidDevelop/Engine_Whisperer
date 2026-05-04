@@ -5,7 +5,7 @@ struct EngineWhispererApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.light) // Светлая тема Ferrari
+                // Поддержка автоматической темной темы
         }
     }
 }
